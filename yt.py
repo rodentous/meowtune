@@ -1,12 +1,12 @@
-import yt_dlp
-import ytmusicapi
+# import yt_dlp
+from ytmusicapi import YTMusic
 import os
 import asyncio
 from queue import Queue
+import subprocess
 
 
-ytm = ytmusicapi.YTMusic()
-
+ytm = YTMusic("browser.json")
 
 async def get_info(videoId: str, info_msg):
     for i in range(3):
@@ -29,7 +29,6 @@ async def search(query: str, info_msg):
             await info_msg.edit_text(f"Search failed {i+1}/3")
             pass
     else:
-        await info_msg.delete()
         search_results = []
 
     results = []
@@ -46,57 +45,40 @@ async def search(query: str, info_msg):
 
 
 async def download(track: str, info_msg):
-    await update_progress(info_msg)
-    ydl_opts = {
-        "format": "bestaudio/best",
-        "outtmpl": os.path.join("tracks", f"{track}"),
-        "postprocessors": [
-            {
-                "key": "FFmpegExtractAudio",
-                "preferredcodec": "mp3",
-                # 'preferredquality': str(quality),
-            },
-            {
-                "key": "FFmpegMetadata",
-            },
-            {
-                "key": "EmbedThumbnail",
-            },
-        ],
-        "writethumbnail": True,
-        "addmetadata": True,
-        "ignoreerrors": True,
-        "nooverwrites": True,
-        "quiet": False,
-        "progress_hooks": [progress_hook],
-        # 'cookiesfrombrowser': ('firefox',),
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        for i in range(3):
-            try:
-                ydl.download(f"https://music.youtube.com/watch?v={track}")
-                await info_msg.delete()
-                return os.path.join("tracks", f"{track}.mp3")
-            except:
-                await info_msg.edit_text(f"Download failed {i+1}/3")
-                pass
+    path = os.path.join("downloads", f"{track}.mp3")
+    if os.path.exists(path):
+        return path
+    
+    # Build the command
+    cmd = [
+        'yt-dlp',
+        '--cookies', "cookies.txt",
+        '--extract-audio',
+        '--audio-format', 'mp3',
+        # '--audio-quality', f'{quality}K',
+        '--embed-thumbnail',
+        '--add-metadata',
+        '--output', path,
+        '--ignore-errors',
+        '--no-overwrites',
+        # '--verbose',  # Add verbose for debugging
+        f"https://music.youtube.com/watch?v={track}"
+    ]
+
+    try:
+        # Run the command
+        result = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            timeout=120,  # 2 minute timeout
+            check=True    # Raise exception on non-zero exit code
+        )
+        
+        await info_msg.edit_text("Downloaded")
+        return path
+    
+    except Exception as e:
+        await info_msg.edit_text(str(e))
+        print(f"❌ Unexpected error: {e}")
         return ""
-
-
-progress_queue = Queue()
-
-
-async def update_progress(info_msg):
-    while True:
-        text = progress_queue.get()
-        if info_msg:
-            await info_msg.edit_text(text)
-        await asyncio.sleep(0.2)
-
-
-def progress_hook(d):
-    """Progress callback function"""
-    if d["status"] == "downloading":
-        progress_queue.put_nowait(f"Downloading: {str(d.get("_percent_str", "0%"))}")
-    elif d["status"] == "finished":
-        progress_queue.put_nowait(f"Downloaded, processing the output...")

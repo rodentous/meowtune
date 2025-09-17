@@ -21,7 +21,7 @@ app = Client("meowtune_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOK
 
 genius = Genius("0GJ93kMmUCFmWspsmYkfbz062eauuoLEAGwyfBppAGTYN2R2-op08jTONcAxhLYE")
 
-ITEMS_PER_PAGE = 8
+ITEMS_PER_PAGE = 6
 
 
 def list_items(items: list[tuple[str, str]], page: int, menu: str = "search"):
@@ -37,11 +37,11 @@ def list_items(items: list[tuple[str, str]], page: int, menu: str = "search"):
         ]
 
     start = page * ITEMS_PER_PAGE
-    end = min(start + ITEMS_PER_PAGE, len(items) - 1)
+    end = min(start + ITEMS_PER_PAGE, len(items))
     buttons = []
 
     item_page = [
-        [InlineKeyboardButton(item[0], callback_data=f"{menu}.{item[1]}")]
+        [InlineKeyboardButton(item[0], callback_data=f"item.{item[1]}")]
         for item in items[start:end]
     ]
 
@@ -77,6 +77,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
             msg = await callback_query.message.reply_text("Retrying...")
             search_items = await yt.search(search_text, msg)
         else:
+            msg = None
             page = int(call_data[1])
 
         keyboard = InlineKeyboardMarkup(list_items(search_items, page))
@@ -84,36 +85,60 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
             f"Search results for {search_text} {page+1}/{ceil(len(search_items)/ITEMS_PER_PAGE)}",
             reply_markup=keyboard,
         )
+        if msg != None:
+            await msg.delete()
 
     elif call_data[0] == "item":
         videoId = call_data[1]
 
         msg = await callback_query.message.reply_text(
-            "Downloading: 0% [this might take a while...]"
+            "Downloading..."
         )
         path = await yt.download(videoId, msg)
 
-        is_liked = data.get_user_data(user_id)["likes"].contains(str(videoId))
+        is_liked = data.get_user_data(user_id)["favorite_tracks"].count(videoId) > 0
         keyboard = InlineKeyboardMarkup(
-            [
+            [[
                 InlineKeyboardButton(
                     "Like?" if not is_liked else "Liked!",
                     callback_data=f"like.{videoId}",
                 ),
                 InlineKeyboardButton("Lyrics", callback_data=f"lyrics.{videoId}"),
-            ],
+            ]]
         )
         await client.send_audio(user_id, audio=path, reply_markup=keyboard)
+        await msg.delete()
 
     elif call_data[0] == "like":
+        videoId = call_data[1]
+        is_liked = data.get_user_data(user_id)["favorite_tracks"].count(videoId) > 0
         liked_tracks = data.get_user_data(user_id)["favorite_tracks"]
-        data.update_user_data(user_id, likes=liked_tracks + "," + str(call_data[1]))
+
+        if not is_liked:
+            liked_tracks.insert(0, videoId)
+            is_liked = True
+        else:
+            liked_tracks.remove(videoId)
+            is_liked = False
+        data.update_user_data(user_id, favorite_tracks=','.join(liked_tracks))
+        
+        keyboard = InlineKeyboardMarkup(
+            [[
+                InlineKeyboardButton(
+                    "Like?" if not is_liked else "Liked!",
+                    callback_data=f"like.{videoId}.{time.time() % 1}",
+                ),
+                InlineKeyboardButton("Lyrics", callback_data=f"lyrics.{videoId}"),
+            ]]
+        )
+        await callback_query.message.edit_caption("", reply_markup=keyboard)
 
     elif call_data[0] == "lyrics":
-        msg = await client.send_message(user_id, "Fetching lyrics...")
-        info = await yt.get_info(call_data[1])
+        msg = await client.send_message(user_id, "Getting info...")
+        info = await yt.get_info(call_data[1], msg)
         await msg.edit_text("Fetching lyrics from genius.com...")
-        callback_query.message.reply_text(
+
+        await callback_query.message.reply_text(
             genius.search_song(
                 info["videoDetails"]["title"], info["videoDetails"]["author"]
             ).lyrics
@@ -135,6 +160,8 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
             page = 0
             msg = await client.send_message(user_id, "Loading favorites...")
             tracks = data.get_user_data(user_id)["favorite_tracks"]
+            if "" in tracks:
+                tracks.remove("")
 
             global liked_items
             liked_items = []
@@ -145,7 +172,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
                     break
                 liked_items.append(
                     (
-                        f"{i+1} | {item.get("title", "Unknown")} | {item.get("artists", "Unknown")[0].get("name", "Unknown")} | {item.get("duration", "Unknown")}",
+                        f"{i+1} | {item["videoDetails"]["title"]} | {item["videoDetails"]["author"]} | {(int(item["videoDetails"]["lengthSeconds"])//60):02d}:{(int(item["videoDetails"]["lengthSeconds"])%60):02d}",
                         tracks[i],
                     )
                 )
@@ -156,8 +183,10 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
             [[InlineKeyboardButton("< Back", callback_data="collection")]]
             + list_items(liked_items, page, "tracks")
         )
-        await msg.delete()
+        print(liked_items)
+        print(tracks)
         await callback_query.edit_message_text("Favorite songs", reply_markup=keyboard)
+        await msg.delete()
 
 
 # search for music
@@ -218,6 +247,8 @@ async def help_command(client: Client, message: Message):
         """Availible commands:
 		/start - start bot
 		/help  - list availible commands
+		/search <query> - search for query
+		/collection - open collection menu
 
 		use menu for navigation
 	"""
@@ -236,7 +267,6 @@ async def search_command(client: Client, message: Message):
         await message.reply_text(
             "Send me a name of a song/album/artist that you are searching for"
         )
-    data.update_user_data(message.from_user.id, state="search")
 
 
 # handler for /collection

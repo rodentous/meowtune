@@ -13,8 +13,9 @@ async def get_info(videoId: str, info_msg):
         try:
             return ytm.get_song(videoId)
         except:
-            await info_msg.edit_text(f"Getting info failed {i+1}/3")
+            await info_msg.edit_text(f"Getting song info failed {i+1}/3")
             pass
+    await info_msg.edit_text(f"Getting song info failed")
     return []
 
 

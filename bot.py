@@ -23,12 +23,13 @@ genius = Genius("0GJ93kMmUCFmWspsmYkfbz062eauuoLEAGwyfBppAGTYN2R2-op08jTONcAxhLY
 
 ITEMS_PER_PAGE = 8
 def list_items(items: list[tuple[str, str]], page: int, menu: str = "search"):
+    random_thing = time.time() % 1
     if items == []:
         return [
             [
                 InlineKeyboardButton(
                     "Nothing found (try again?)",
-                    callback_data=f"search.retry.{time.time()}",
+                    callback_data=f"{menu}.retry.{random_thing}",
                 )
             ]
         ]
@@ -50,7 +51,7 @@ def list_items(items: list[tuple[str, str]], page: int, menu: str = "search"):
     buttons.append(
         InlineKeyboardButton(
             f"{page+1}/{ceil(len(items)/ITEMS_PER_PAGE)}",
-            callback_data=f"{menu}.{page}.{time.time()}",
+            callback_data=f"{menu}.{page}.{random_thing}",
         )
     )
 
@@ -117,28 +118,37 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
         keyboard = InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("Favorite tracks", callback_data="tracks.0")],
-                [InlineKeyboardButton("Favorite albums", callback_data="albums.0")],
-                [InlineKeyboardButton("Favorite artists", callback_data="artists.0")],
+                # [InlineKeyboardButton("Favorite albums", callback_data="albums.0")],
+                # [InlineKeyboardButton("Favorite artists", callback_data="artists.0")],
             ]
         )
         await callback_query.message.edit_text("My collection", reply_markup=keyboard)
 
     elif call_data[0] == "tracks":
-        msg = await client.send_message(user_id, "Loading favorites...")
-        tracks = data.get_user_data(user_id)["favorite_tracks"]
-        items = []
-        for i in range(len(tracks)):
-            item = await yt.get_info(tracks[i], msg)
-            items.append(
-                (
-                    f"{i+1} | {item.get('title', 'Unknown')} | {item.get('artists', 'Unknown')[0].get("name", "Unknown")} | {item.get('duration', 'Unknown')}",
-                    tracks[i],
+        if call_data[1] == "retry" or call_data[1] == "0":
+            page = 0
+            msg = await client.send_message(user_id, "Loading favorites...")
+            tracks = data.get_user_data(user_id)["favorite_tracks"]
+
+            global liked_items
+            liked_items = []
+            for i in range(len(tracks)):
+                item = await yt.get_info(tracks[i], msg)
+                if item == []:
+                    await msg.edit_text("Could not load the song")
+                    break
+                liked_items.append(
+                    (
+                        f"{i+1} | {item.get('title', 'Unknown')} | {item.get('artists', 'Unknown')[0].get("name", "Unknown")} | {item.get('duration', 'Unknown')}",
+                        tracks[i],
+                    )
                 )
-            )
+        else:
+            page = call_data[1]
+
 
         keyboard = InlineKeyboardMarkup(
-            [[InlineKeyboardButton("< Back")]]
-            + list_items(items, call_data[1], "tracks")
+            [[InlineKeyboardButton("< Back", callback_data="collection")]] + list_items(liked_items, page, "tracks")
         )
         await msg.delete()
         await callback_query.edit_message_text("Favorite songs", reply_markup=keyboard)
@@ -254,9 +264,9 @@ async def search_command(client: Client, message: Message):
 async def collection_command(client: Client, message: Message):
     keyboard = InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("Favorite tracks", callback_data="tracks")],
-            [InlineKeyboardButton("Favorite albums", callback_data="albums")],
-            [InlineKeyboardButton("Favorite artists", callback_data="artists")],
+            [InlineKeyboardButton("Favorite tracks", callback_data="tracks.0")],
+            # [InlineKeyboardButton("Favorite albums", callback_data="albums.0")],
+            # [InlineKeyboardButton("Favorite artists", callback_data="artists.0")],
         ]
     )
 

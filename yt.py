@@ -37,7 +37,7 @@ async def search(query: str, info_msg):
     for result in search_results:
         results.append(
             (
-                f"{i} | {result.get('title', 'Unknown')} | {result.get('artists', 'Unknown')[0].get("name", "Unknown")} | {result.get('duration', 'Unknown')}",
+                f"{i} | {result.get("title", "Unknown")} | {result.get("artists", "Unknown")[0].get("name", "Unknown")} | {result.get("duration", "Unknown")}",
                 result.get("videoId", "HUH???"),
             )
         )
@@ -84,6 +84,8 @@ async def download(track: str, info_msg):
 
 
 progress_queue = Queue()
+
+
 async def update_progress(info_msg):
     while True:
         text = progress_queue.get()
@@ -95,6 +97,6 @@ async def update_progress(info_msg):
 def progress_hook(d):
     """Progress callback function"""
     if d["status"] == "downloading":
-        progress_queue.put_nowait(f"Downloading: {str(d.get('_percent_str', '0%'))}")
+        progress_queue.put_nowait(f"Downloading: {str(d.get("_percent_str", "0%"))}")
     elif d["status"] == "finished":
         progress_queue.put_nowait(f"Downloaded, processing the output...")

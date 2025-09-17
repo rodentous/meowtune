@@ -8,19 +8,18 @@ def init_db():
     cursor = conn.cursor()
     cursor.execute(
         """
-		CREATE TABLE IF NOT EXISTS users (
-		user_id INTEGER PRIMARY KEY,
-		state TEXT DEFAULT 'normal',
-		preferences TEXT DEFAULT '{}',
-		favorite_tracks TEXT DEFAULT ''
-	)
-	"""
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY,
+            preferences TEXT DEFAULT '{}',
+            favorite_tracks TEXT DEFAULT ''
+        )
+        """
     )
     conn.commit()
     conn.close()
 
 
-def get_user_data(user_id):
+def get_user_data(user_id: str):
     conn = sqlite3.connect("user_data.db")
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE user_id = ?", (user_id,))
@@ -30,14 +29,13 @@ def get_user_data(user_id):
     if user:
         return {
             "user_id": user[0],
-            "state": user[1],
-            "preferences": json.loads(user[2]),
-            "favorite_tracks": user[3].split(","),
+            "preferences": json.loads(user[1]),
+            "favorite_tracks": user[2].split(","),
         }
     return user
 
 
-def update_user_data(user_id, **updates):
+def update_user_data(user_id: str, **updates):
     conn = sqlite3.connect("user_data.db")
     cursor = conn.cursor()
 

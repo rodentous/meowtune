@@ -10,6 +10,7 @@ from pyrogram.types import (
 from math import ceil
 import data, yt
 import asyncio, time
+from lyricsgenius import Genius
 
 
 # Create a Client instance
@@ -18,7 +19,7 @@ API_ID = 25678641
 API_HASH = "c8f1cd4b42e98374785a2f96fc74e175"
 app = Client("sillynes", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-
+genius = Genius("0GJ93kMmUCFmWspsmYkfbz062eauuoLEAGwyfBppAGTYN2R2-op08jTONcAxhLYE")
 
 ITEMS_PER_PAGE = 8
 def list_items(items: list[tuple[str, str]], page: int):
@@ -70,7 +71,8 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
         if call_data[1] == "retry":
             page = 0
             global search_items
-            search_items = yt.search(search_text)
+            msg = await callback_query.message.reply_text("Retrying...")
+            search_items = await yt.search(search_text, msg)
         else:
             page = int(call_data[1])
 
@@ -82,10 +84,10 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
 
     elif call_data[0] == "item":
         videoId = call_data[1]
+
         msg = await callback_query.message.reply_text("Downloading: 0% [this might take a while...]")
-        asyncio.create_task(yt.update_progress(msg))
-        path = yt.download(videoId)
-        await msg.delete()
+        path = await yt.download(videoId, msg)
+
         is_liked = data.get_user_data(user_id)["likes"].contains(str(videoId))
         keyboard = InlineKeyboardMarkup(
             [
@@ -103,11 +105,9 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
         data.update_user_data(user_id, likes=liked_songs + "," + str(call_data[1]))
 
     elif call_data[0] == "lyrics":
+        info = yt.get_info(call_data[1])
         callback_query.message.reply_text(
-            f"""{call_data[1]}: LA LA LA,
-                                LA LA LA
-                                LA LA LA LA LA
-                                NANANANANA MEOW"""
+            genius.search_song(info["videoDetails"]["title"], info["videoDetails"]["author"]).lyrics
         )
 
     elif call_data[0] == "collection":
@@ -126,10 +126,12 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
 async def search(message: Message, text: str = None):
         if text == None:
             text = message.text
+
+        msg = await app.send_message(message.from_user.id, "Searching...")
         global search_text
         global search_items
         search_text = text
-        search_items = yt.search(text)
+        search_items = await yt.search(text, msg)
 
         keyboard = InlineKeyboardMarkup(list_items(search_items, 0))
         if type(search_items) == list:
@@ -209,9 +211,12 @@ async def help_command(client: Client, message: Message):
 
 # handler for /search
 @app.on_message(filters.command("search"))
-async def search_command(message: Message):
-    if len(message.command):
-        search(message)
+async def search_command(client: Client, message: Message):
+    if message.command:
+        if len(message.command > 1):
+            await search(message, message.command[1])
+        else:
+            await message.reply_text("No query")
     else:
         await message.reply_text(
             "Send me a name of a song/album/artist that you are searching for"
@@ -221,7 +226,7 @@ async def search_command(message: Message):
 
 # handler for /collection
 @app.on_message(filters.command("collection"))
-async def collection_command(message: Message):
+async def collection_command(client: Client, message: Message):
     keyboard = InlineKeyboardMarkup(
         [
             [InlineKeyboardButton("Favorite tracks", callback_data="tracks")],
@@ -238,7 +243,7 @@ async def collection_command(message: Message):
 async def text_message(client: Client, message: Message):
     if message.text == "🔍 Search music":
         await search_command(message)
-    if message.text == "📦 My collection":
+    elif message.text == "📦 My collection":
         await collection_command(message)
     else:
         await search(message)

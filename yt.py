@@ -1,24 +1,36 @@
 import yt_dlp
-import json
+import ytmusicapi
 import os
 import asyncio
 from queue import Queue
-import ytmusicapi
 
 
-def search_youtube(query):
-    try:
-        ytm = ytmusicapi.YTMusic()
-        return ytm.search(query, filter="songs", limit=99)
-    except Exception as e:
-        print(f"Error searching: {e}")
-        return e
+ytm = ytmusicapi.YTMusic()
 
 
-def search(text: str):
-    search_results = search_youtube(text)
-    if type(search_results) == Exception:
-        return search_results
+def get_info(videoId: str):
+    for i in range(3):
+        try:
+            return ytm.get_song(videoId)
+        except:
+            print(f"Getting info failed {i+1}/3 Retrying...")
+            pass
+    return []
+
+
+async def search(query: str, info_msg):
+    for i in range(3):
+        try:
+            search_results = ytm.search(query, filter="songs", limit=99)
+            await info_msg.delete()
+            break
+        except:
+            await info_msg.edit_text(f"Search failed {i+1}/3 Retrying...")
+            pass
+    else:
+        await info_msg.delete()
+        search_results = []
+
     results = []
     i = 1
     for result in search_results:
@@ -32,7 +44,8 @@ def search(text: str):
     return results
 
 
-def download(track: str):
+async def download(track: str, info_msg):
+    await update_progress(info_msg)
     ydl_opts = {
         "format": "bestaudio/best",
         "outtmpl": os.path.join("tracks", f"{track}"),
@@ -58,12 +71,24 @@ def download(track: str):
         # 'cookiesfrombrowser': ('firefox',),
     }
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download(f"https://music.youtube.com/watch?v={track}")
-
-    return os.path.join("tracks", f"{track}.mp3")
+        for i in range(3):
+            try:
+                ydl.download(f"https://music.youtube.com/watch?v={track}")
+                await info_msg.delete()
+                return os.path.join("tracks", f"{track}.mp3")
+            except:
+                await info_msg.edit_text(f"Download failed {i+1}/3 Retrying...")
+                pass
+        return ""
 
 
 progress_queue = Queue()
+async def update_progress(info_msg):
+    while True:
+        text = progress_queue.get()
+        if info_msg:
+            await info_msg.edit_text(text)
+        await asyncio.sleep(0.2)
 
 
 def progress_hook(d):
@@ -72,11 +97,3 @@ def progress_hook(d):
         progress_queue.put_nowait(f"Downloading: {str(d.get('_percent_str', '0%'))}")
     elif d["status"] == "finished":
         progress_queue.put_nowait(f"Downloaded, processing the output...")
-
-
-async def update_progress(msg):
-    while True:
-        text = progress_queue.get()
-        if msg:
-            await msg.edit_text(text)
-        await asyncio.sleep(0.2)

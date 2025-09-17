@@ -8,12 +8,12 @@ from queue import Queue
 ytm = ytmusicapi.YTMusic()
 
 
-def get_info(videoId: str):
+async def get_info(videoId: str, info_msg):
     for i in range(3):
         try:
             return ytm.get_song(videoId)
         except:
-            print(f"Getting info failed {i+1}/3 Retrying...")
+            await info_msg.edit_text(f"Getting info failed {i+1}/3")
             pass
     return []
 
@@ -25,7 +25,7 @@ async def search(query: str, info_msg):
             await info_msg.delete()
             break
         except:
-            await info_msg.edit_text(f"Search failed {i+1}/3 Retrying...")
+            await info_msg.edit_text(f"Search failed {i+1}/3")
             pass
     else:
         await info_msg.delete()
@@ -77,7 +77,7 @@ async def download(track: str, info_msg):
                 await info_msg.delete()
                 return os.path.join("tracks", f"{track}.mp3")
             except:
-                await info_msg.edit_text(f"Download failed {i+1}/3 Retrying...")
+                await info_msg.edit_text(f"Download failed {i+1}/3")
                 pass
         return ""
 

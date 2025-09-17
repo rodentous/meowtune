@@ -17,12 +17,12 @@ from lyricsgenius import Genius
 BOT_TOKEN = "8454304817:AAGo94UPi4q7-60adyFqAntB5trVDhF-PPQ"
 API_ID = 25678641
 API_HASH = "c8f1cd4b42e98374785a2f96fc74e175"
-app = Client("sillynes", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
+app = Client("meowtune_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
 genius = Genius("0GJ93kMmUCFmWspsmYkfbz062eauuoLEAGwyfBppAGTYN2R2-op08jTONcAxhLYE")
 
 ITEMS_PER_PAGE = 8
-def list_items(items: list[tuple[str, str]], page: int):
+def list_items(items: list[tuple[str, str]], page: int, menu: str = "search"):
     if items == []:
         return [
             [
@@ -38,26 +38,26 @@ def list_items(items: list[tuple[str, str]], page: int):
     buttons = []
 
     item_page = [
-        [InlineKeyboardButton(item[0], callback_data=f"item.{item[1]}")]
+        [InlineKeyboardButton(item[0], callback_data=f"{menu}.{item[1]}")]
         for item in items[start:end]
     ]
 
     if page > 0:
-        buttons.append(InlineKeyboardButton("<", callback_data=f"search.{page - 1}"))
+        buttons.append(InlineKeyboardButton("<", callback_data=f"{menu}.{page - 1}"))
     else:
-        buttons.append(InlineKeyboardButton(" ", callback_data=f"search.{page}"))
+        buttons.append(InlineKeyboardButton(" ", callback_data=f"{menu}.{page}"))
 
     buttons.append(
         InlineKeyboardButton(
             f"{page+1}/{ceil(len(items)/ITEMS_PER_PAGE)}",
-            callback_data=f"search.{page}.{time.time()}",
+            callback_data=f"{menu}.{page}.{time.time()}",
         )
     )
 
     if (page + 1) * ITEMS_PER_PAGE < len(items):
-        buttons.append(InlineKeyboardButton(">", callback_data=f"search.{page + 1}"))
+        buttons.append(InlineKeyboardButton(">", callback_data=f"{menu}.{page + 1}"))
     else:
-        buttons.append(InlineKeyboardButton(" ", callback_data=f"search.{page}"))
+        buttons.append(InlineKeyboardButton(" ", callback_data=f"{menu}.{page}"))
 
     return [buttons] + item_page
 
@@ -101,24 +101,47 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
         await client.send_audio(user_id, audio=path, reply_markup=keyboard)
 
     elif call_data[0] == "like":
-        liked_songs = data.get_user_data(user_id)["likes"]
-        data.update_user_data(user_id, likes=liked_songs + "," + str(call_data[1]))
+        liked_tracks = data.get_user_data(user_id)["favorite_tracks"]
+        data.update_user_data(user_id, likes=liked_tracks + "," + str(call_data[1]))
 
     elif call_data[0] == "lyrics":
-        info = yt.get_info(call_data[1])
+        msg = await client.send_message(user_id, "Fetching lyrics...")
+        info = await yt.get_info(call_data[1])
+        await msg.edit_text("Fetching lyrics from genius.com...")
         callback_query.message.reply_text(
             genius.search_song(info["videoDetails"]["title"], info["videoDetails"]["author"]).lyrics
         )
+        await msg.delete()
 
     elif call_data[0] == "collection":
         keyboard = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("Favorite tracks", callback_data="tracks")],
-                [InlineKeyboardButton("Favorite albums", callback_data="albums")],
-                [InlineKeyboardButton("Favorite artists", callback_data="artists")],
+                [InlineKeyboardButton("Favorite tracks", callback_data="tracks.0")],
+                [InlineKeyboardButton("Favorite albums", callback_data="albums.0")],
+                [InlineKeyboardButton("Favorite artists", callback_data="artists.0")],
             ]
         )
         await callback_query.message.edit_text("My collection", reply_markup=keyboard)
+
+    elif call_data[0] == "tracks":
+        msg = await client.send_message(user_id, "Loading favorites...")
+        tracks = data.get_user_data(user_id)["favorite_tracks"]
+        items = []
+        for i in range(len(tracks)):
+            item = await yt.get_info(tracks[i], msg)
+            items.append(
+                (
+                    f"{i+1} | {item.get('title', 'Unknown')} | {item.get('artists', 'Unknown')[0].get("name", "Unknown")} | {item.get('duration', 'Unknown')}",
+                    tracks[i],
+                )
+            )
+
+        keyboard = InlineKeyboardMarkup(
+            [[InlineKeyboardButton("< Back")]]
+            + list_items(items, call_data[1], "tracks")
+        )
+        await msg.delete()
+        await callback_query.edit_message_text("Favorite songs", reply_markup=keyboard)
 
 
 
@@ -174,6 +197,8 @@ async def start_command(client: Client, message: Message):
         commands=[
             BotCommand("start", "Start the bot"),
             BotCommand("help", "List available commands"),
+            BotCommand("search", "Search for song (requires 1 argument for query)"),
+            BotCommand("collection", "Open collection menu"),
         ]
     )
 
@@ -213,7 +238,7 @@ async def help_command(client: Client, message: Message):
 @app.on_message(filters.command("search"))
 async def search_command(client: Client, message: Message):
     if message.command:
-        if len(message.command > 1):
+        if len(message.command) > 1:
             await search(message, message.command[1])
         else:
             await message.reply_text("No query")
@@ -242,9 +267,9 @@ async def collection_command(client: Client, message: Message):
 @app.on_message(filters.text & ~filters.command(["help", "start"]))
 async def text_message(client: Client, message: Message):
     if message.text == "🔍 Search music":
-        await search_command(message)
+        await search_command(client, message)
     elif message.text == "📦 My collection":
-        await collection_command(message)
+        await collection_command(client, message)
     else:
         await search(message)
 

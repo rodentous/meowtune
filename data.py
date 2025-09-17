@@ -32,7 +32,7 @@ def get_user_data(user_id):
             "user_id": user[0],
             "state": user[1],
             "preferences": json.loads(user[2]),
-            "False": user[3].split(","),
+            "favorite_tracks": user[3].split(","),
         }
     return user
 

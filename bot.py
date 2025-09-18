@@ -85,7 +85,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
 
         if call_data[1] == "retry":
             progress_message = await callback_query.message.reply_text("Searching...")
-            search_results = meta.search_tracks(search_query)
+            search_results = await meta.search_tracks(search_query)
         else:
             page = int(call_data[1])
 
@@ -107,7 +107,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
         track_id = call_data[1]
 
         progress_message = await callback_query.message.reply_text("Downloading...")
-        path = meta.download_track(track_id)
+        path = await meta.download_track(track_id)
 
         favorite = track_id in data.get_user_data(user_id)["favorite_tracks"]
         keyboard = InlineKeyboardMarkup(
@@ -152,7 +152,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
 
     elif call_data[0] == "lyrics":
         progress_message = await client.send_message(user_id, "Getting info...")
-        track = meta.get_track(call_data[1])
+        track = await meta.get_track(call_data[1])
 
         await progress_message.edit_text(
             f"Fetching lyrics for {track.title} - {track.artist}"
@@ -193,7 +193,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
             global favorite_results
             favorite_results = []
             for track in tracks:
-                t = meta.get_track(track)
+                t = await meta.get_track(track)
 
                 favorite_results.append(
                     (
@@ -223,7 +223,7 @@ async def search(message: Message, query: str = None):
     search_query = query
 
     global search_results
-    search_results = meta.search_tracks(query)
+    search_results = await meta.search_tracks(query)
 
     items = [
         (f"{t.title} | {t.artist} | {t.duration}", t.track_id)
@@ -250,6 +250,7 @@ async def start_command(client: Client, message: Message):
     )
 
     data.update_user_data(message.from_user.id)
+    await meta.init()
 
     keyboard = ReplyKeyboardMarkup(
         [

@@ -1,15 +1,14 @@
 # import yt_dlp
 from ytmusicapi import YTMusic
-import os
 import subprocess
 
 
 ytm = YTMusic("browser.json")
 
 
-def get_info(videoId: str) -> list[str]:
+def get_info(track_id: str) -> list[str]:
     try:
-        t = ytm.get_watch_playlist(videoId)["tracks"][0]
+        t = ytm.get_watch_playlist(track_id)["tracks"][0]
 
         return [
             t.get("videoId", "unknown_id"),
@@ -41,7 +40,7 @@ def search(query: str) -> list[list[str]]:
         return []
 
 
-def download(track: str, path: str) -> str:
+def download(track_id: str, path: str) -> str:
     # Build the command
     cmd = [
         "yt-dlp",
@@ -58,7 +57,7 @@ def download(track: str, path: str) -> str:
         "--ignore-errors",
         "--no-overwrites",
         # '--verbose',  # Add verbose for debugging
-        f"https://music.youtube.com/watch?v={track}",
+        f"https://music.youtube.com/watch?v={track_id}",
     ]
 
     try:
@@ -74,3 +73,7 @@ def download(track: str, path: str) -> str:
     except Exception as e:
         print(f"yt-dlp error: {e}")
         return ""
+
+
+# def lyrics(track_id: str) -> str:
+#     pass

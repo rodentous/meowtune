@@ -1,4 +1,5 @@
-import yt
+# import youtubemusic
+import yandexmusic
 import os
 
 
@@ -16,21 +17,25 @@ class Track:
         self.duration: str = duration
 
 
-def get_track(track_id: str) -> Track:
-    t = yt.get_info(track_id)
+async def get_track(track_id: str) -> Track:
+    t = yandexmusic.get_info(track_id)
     return Track(t[0], t[1], t[2], t[3], t[4])
 
 
-def search_tracks(query: str) -> list[Track]:
-    results = yt.search(query)
+async def search_tracks(query: str) -> list[Track]:
+    results = yandexmusic.search(query)
     tracks = [Track(t[0], t[1], t[2], t[3], t[4]) for t in results]
     return tracks
 
 
-def download_track(track_id: str) -> str:
+async def download_track(track_id: str) -> str:
     path = os.path.join(TARGET_DIR, f"{track_id}.mp3")
 
     if os.path.exists(path):
         return path
 
-    return yt.download(track_id, path)
+    return yandexmusic.download(track_id, path)
+
+
+async def init():
+    await yandexmusic.init()

@@ -9,14 +9,13 @@ ytm = YTMusic("browser.json")
 
 def get_info(videoId: str) -> list:
     try:
-        t = ytm.get_song(videoId)["videoDetails"]
-        additional_info = ytm.get_watch_playlist(videoId)["tracks"][0]
+        t = ytm.get_watch_playlist(videoId)["tracks"][0]
 
         return [
             t.get("videoId", "unknown_id"),
             t.get("title", "Unknown"),
             ", ".join([a.get("name", "Unknown") for a in t.get("artists", [{"name": "Unknown"}])]),
-            additional_info["album"]["name"],
+            t.get("album", {"name": "Unknown"})["name"],
             t.get("lengthSeconds", 0),
         ]
     except Exception as e:

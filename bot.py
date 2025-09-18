@@ -85,13 +85,14 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
         global search_results
 
         if call_data[1] == "retry":
-            tracks: list[Track] = meta.search_tracks(search_query)
-            items = [
-                (f"{t.title} | {t.artist} | {t.show_duration()}", t.track_id)
-                for t in tracks
-            ]
+            search_results: list[Track] = meta.search_tracks(search_query)
         else:
             page = int(call_data[1])
+
+        items = [
+            (f"{t.title} | {t.artist} | {t.show_duration()}", t.track_id)
+            for t in search_results
+        ]
 
         keyboard = InlineKeyboardMarkup(list_items(items, page))
         await callback_query.message.edit_text(
@@ -223,7 +224,12 @@ async def search(message: Message, query: str = None):
     global search_results
     search_results = meta.search_tracks(query)
 
-    keyboard = InlineKeyboardMarkup(list_items(search_results, 0))
+    items = [
+        (f"{t.title} | {t.artist} | {t.show_duration()}", t.track_id)
+        for t in search_results
+    ]
+
+    keyboard = InlineKeyboardMarkup(list_items(items, 0))
     await message.reply_text(
         f"Search results for {search_query}", reply_markup=keyboard
     )

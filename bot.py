@@ -281,6 +281,17 @@ async def help_command(client: Client, message: Message):
 		use menu for navigation
 	"""
     )
+    lyrics = genius.search_song("Альтернатива", "Дайте танк(!)").lyrics
+
+    quote_entity = [
+        MessageEntity(
+            type=enums.MessageEntityType.BLOCKQUOTE,
+            offset=0,
+            length=len(lyrics),
+            expandable=True,
+        )
+    ]
+    await message.reply_text(lyrics, entities=quote_entity)
 
 
 # handler for /search

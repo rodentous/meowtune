@@ -13,7 +13,7 @@ def get_info(videoId: str) -> list:
         additional_info = ytm.get_watch_playlist(videoId)["tracks"][0]
 
         return [
-            t["videoId"],
+            t["videoDetails"]["videoId"],
             t["videoDetails"]["title"],
             ", ".join([a.get("name", "") for a in t.get("artists", [])]),
             additional_info["album"]["name"],

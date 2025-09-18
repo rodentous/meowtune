@@ -85,7 +85,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
         global search_results
 
         if call_data[1] == "retry":
-            search_results: list[Track] = meta.search_tracks(search_query)
+            search_results = meta.search_tracks(search_query)
         else:
             page = int(call_data[1])
 

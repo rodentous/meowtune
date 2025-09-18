@@ -10,7 +10,7 @@ ytm = YTMusic("browser.json")
 def get_info(videoId: str) -> list:
     try:
         t = ytm.get_song(videoId)
-        additional_info = ytm.get_watch_playlist(videoId)[0]
+        additional_info = ytm.get_watch_playlist(videoId)["tracks"][0]
 
         return [
             t["videoId"],
@@ -20,7 +20,7 @@ def get_info(videoId: str) -> list:
             t["videoDetails"]["lengthSeconds"],
         ]
     except Exception as e:
-        print("ytm get_song error: ", e)
+        print(f"ytm get_song error: {e}")
         return []
 
 
@@ -38,7 +38,7 @@ def search(query: str) -> list[list]:
             for t in tracks
         ]
     except Exception as e:
-        print("ytm search error:", e)
+        print(f"ytm search error: {e}")
         return []
 
 
@@ -73,5 +73,5 @@ def download(track: str, path: str) -> str:
         return path
 
     except Exception as e:
-        print("yt-dlp error: ", e)
+        print(f"yt-dlp error: {e}")
         return ""

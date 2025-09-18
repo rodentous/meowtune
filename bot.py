@@ -1,4 +1,4 @@
-from pyrogram import Client, filters
+from pyrogram import Client, filters, enums
 from pyrogram.types import (
     Message,
     MessageEntity,
@@ -161,7 +161,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
 
         quote_entity = [
             MessageEntity(
-                type=MessageEntity.BLOCKQUOTE,
+                type=enums.MessageEntityType.BLOCKQUOTE,
                 offset=0,
                 length=len(lyrics),
                 expandable=True,

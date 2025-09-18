@@ -18,12 +18,12 @@ class Track:
 
 
 async def get_track(track_id: str) -> Track:
-    t = yandexmusic.get_info(track_id)
+    t = await yandexmusic.get_info(track_id)
     return Track(t[0], t[1], t[2], t[3], t[4])
 
 
 async def search_tracks(query: str) -> list[Track]:
-    results = yandexmusic.search(query)
+    results = await yandexmusic.search(query)
     tracks = [Track(t[0], t[1], t[2], t[3], t[4]) for t in results]
     return tracks
 
@@ -32,9 +32,10 @@ async def download_track(track_id: str) -> str:
     path = os.path.join(TARGET_DIR, f"{track_id}.mp3")
 
     if os.path.exists(path):
+        print(f"{track_id} was already downloaded, skipping")
         return path
 
-    return yandexmusic.download(track_id, path)
+    return await yandexmusic.download(track_id, path)
 
 
 async def init():

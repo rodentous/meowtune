@@ -87,6 +87,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
             progress_message = await callback_query.message.reply_text("Searching...")
             search_results = await meta.search_tracks(search_query)
         else:
+            progress_message = None
             page = int(call_data[1])
 
         items = [

@@ -13,10 +13,7 @@ class Track:
         self.title: str = title
         self.artist: str = artist
         self.album: str = album
-        self.duration: int = duration
-
-    def show_duration(self) -> str:
-        return f"{self.duration//60:02d}:{self.duration%60:02d}"
+        self.duration: str = duration
 
 
 def get_track(track_id: str) -> Track:

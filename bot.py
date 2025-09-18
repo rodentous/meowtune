@@ -90,7 +90,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
             page = int(call_data[1])
 
         items = [
-            (f"{t.title} | {t.artist} | {t.show_duration()}", t.track_id)
+            (f"{t.title} | {t.artist} | {t.duration}", t.track_id)
             for t in search_results
         ]
 
@@ -197,7 +197,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
 
                 favorite_results.append(
                     (
-                        f"{t.title} | {t.artist} | {t.show_duration()}",
+                        f"{t.title} | {t.artist} | {t.duration}",
                         t.track_id,
                     )
                 )
@@ -226,7 +226,7 @@ async def search(message: Message, query: str = None):
     search_results = meta.search_tracks(query)
 
     items = [
-        (f"{t.title} | {t.artist} | {t.show_duration()}", t.track_id)
+        (f"{t.title} | {t.artist} | {t.duration}", t.track_id)
         for t in search_results
     ]
 

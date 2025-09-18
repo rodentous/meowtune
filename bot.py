@@ -86,7 +86,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
         global search_results
 
         if call_data[1] == "retry":
-            tracks: list[Track] = await meta.search_tracks(search_text)
+            tracks: list[Track] = meta.search_tracks(search_text)
             items = [(f"{t.title} | {t.artist} | {t.show_duration()}", t.track_id) for t in tracks]
         else:
             page = int(call_data[1])
@@ -100,93 +100,89 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
 
     # Item selected
     elif call_data[0] == "item":
-        videoId = call_data[1]
+        track_id = call_data[1]
 
-        msg = await callback_query.message.reply_text("Downloading...")
-        path = await yt.download(videoId, msg)
+        progress_message = await callback_query.message.reply_text("Downloading...")
+        path = meta.download_track(track_id)
 
-        is_liked = videoId in data.get_user_data(user_id)["favorite_tracks"]
+        favorite = track_id in data.get_user_data(user_id)["favorite_tracks"]
         keyboard = InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
-                        "Like?" if not is_liked else "Liked!",
-                        callback_data=f"like.{videoId}",
+                        "Like?" if not favorite else "Liked!",
+                        callback_data=f"like.{track_id}",
                     ),
-                    InlineKeyboardButton("Lyrics", callback_data=f"lyrics.{videoId}"),
+                    InlineKeyboardButton("Lyrics", callback_data=f"lyrics.{track_id}"),
                 ]
             ]
         )
         await client.send_audio(user_id, audio=path, reply_markup=keyboard)
-        await msg.delete()
+        await progress_message.delete()
 
     elif call_data[0] == "like":
-        videoId = call_data[1]
-        is_liked = data.get_user_data(user_id)["favorite_tracks"].count(videoId) > 0
-        liked_tracks = data.get_user_data(user_id)["favorite_tracks"]
+        track_id = call_data[1]
+        favorite = track_id in data.get_user_data(user_id)["favorite_tracks"]
+        favorite_tracks = data.get_user_data(user_id)["favorite_tracks"]
 
-        if not is_liked:
-            liked_tracks.insert(0, videoId)
-            is_liked = True
+        if not favorite:
+            favorite_tracks.insert(0, track_id)
+            favorite = True
         else:
-            liked_tracks.remove(videoId)
-            is_liked = False
-        data.update_user_data(user_id, favorite_tracks=",".join(liked_tracks))
+            favorite_tracks.remove(track_id)
+            favorite = False
+        data.update_user_data(user_id, favorite_tracks=",".join(favorite_tracks))
 
         keyboard = InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
-                        "Like?" if not is_liked else "Liked!",
-                        callback_data=f"like.{videoId}.{time.time() % 1}",
+                        "Like?" if not favorite else "Liked!",
+                        callback_data=f"like.{track_id}.{time.time() % 1}",
                     ),
-                    InlineKeyboardButton("Lyrics", callback_data=f"lyrics.{videoId}"),
+                    InlineKeyboardButton("Lyrics", callback_data=f"lyrics.{track_id}"),
                 ]
             ]
         )
         await callback_query.message.edit_caption("", reply_markup=keyboard)
 
     elif call_data[0] == "lyrics":
-        msg = await client.send_message(user_id, "Getting info...")
-        info = await yt.get_info(call_data[1], msg)
-        await msg.edit_text("Fetching lyrics from genius.com...")
+        progress_message = await client.send_message(user_id, "Getting info...")
+        track = meta.get_track(call_data[1])
 
-        text = genius.search_song(
-            info["videoDetails"]["title"], info["videoDetails"]["author"]
-        ).lyrics
+        await progress_message.edit_text(f"Fetching lyrics for {track.title} - {track.artist}")
+        lyrics = genius.search_song(track.title, track.artist).lyrics
 
         quote_entity = [
             MessageEntity(
                 type=MessageEntity.BLOCKQUOTE,
                 offset=0,
-                length=len(text),
+                length=len(lyrics),
                 expandable=True,
             )
         ]
-
-        await callback_query.message.reply_text(text, entities=quote_entity)
-        await msg.delete()
+        await callback_query.message.reply_text(lyrics, entities=quote_entity)
+        await progress_message.delete()
 
     elif call_data[0] == "collection":
         keyboard = InlineKeyboardMarkup(
             [
-                [InlineKeyboardButton("Favorite tracks", callback_data="tracks.0")],
-                # [InlineKeyboardButton("Favorite albums", callback_data="albums.0")],
-                # [InlineKeyboardButton("Favorite artists", callback_data="artists.0")],
+                [InlineKeyboardButton("Favorite tracks", callback_data="tracks")],
+                # [InlineKeyboardButton("Favorite albums", callback_data="albums")],
+                # [InlineKeyboardButton("Favorite artists", callback_data="artists")],
             ]
         )
         await callback_query.message.edit_text("My collection", reply_markup=keyboard)
 
     elif call_data[0] == "tracks":
-        if call_data[1] == "retry" or call_data[1] == "0":
-            page = 0
-            msg = await client.send_message(user_id, "Loading favorites...")
+        page: int = 0
+        if len(call_data) == 1 or call_data[1] == "retry":
+            progress_message = await client.send_message(user_id, "Loading favorites...")
             tracks = data.get_user_data(user_id)["favorite_tracks"]
-            if "" in tracks:
-                tracks.remove("")
+            if "" in tracks: tracks.remove("")
 
-            global liked_items
-            liked_items = []
+            global favorite_results
+            favorite_results = []
             for i in range(len(tracks)):
                 item = await yt.get_info(tracks[i], msg)
                 if item == []:
@@ -199,7 +195,7 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
                     )
                 )
         else:
-            page = call_data[1]
+            page = int(call_data[1])
 
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("< Back", callback_data="collection")]]

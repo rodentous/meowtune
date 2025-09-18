@@ -10,8 +10,8 @@ ytm = YTMusic("browser.json")
 def get_info(videoId: str) -> list[str]:
     t = ytm.get_song(videoId)
     return [
-        t.get("videoId", ""),
-        t.get("title", ""),
+        t["videoId"],
+        t["videoDetails"]["title"],
         ", ".join([a.get("name", "") for a in t.get("artists", [])]),
     ]
 

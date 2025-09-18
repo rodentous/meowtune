@@ -25,7 +25,6 @@ app = Client("meowtune_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOK
 genius = Genius("0GJ93kMmUCFmWspsmYkfbz062eauuoLEAGwyfBppAGTYN2R2-op08jTONcAxhLYE")
 
 
-
 def list_items(items: list[(str, str)], page: int, menu: str = "search"):
     random_thing = time.time() % 1
     if items == []:
@@ -82,18 +81,21 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
     if call_data[0] == "search":
         page: int = 0
         progress_message = await callback_query.message.reply_text("Searching...")
-        global search_text
+        global search_query
         global search_results
 
         if call_data[1] == "retry":
-            tracks: list[Track] = meta.search_tracks(search_text)
-            items = [(f"{t.title} | {t.artist} | {t.show_duration()}", t.track_id) for t in tracks]
+            tracks: list[Track] = meta.search_tracks(search_query)
+            items = [
+                (f"{t.title} | {t.artist} | {t.show_duration()}", t.track_id)
+                for t in tracks
+            ]
         else:
             page = int(call_data[1])
 
         keyboard = InlineKeyboardMarkup(list_items(items, page))
         await callback_query.message.edit_text(
-            f"Search results for {search_text}",
+            f"Search results for {search_query}",
             reply_markup=keyboard,
         )
         await progress_message.delete()
@@ -150,7 +152,9 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
         progress_message = await client.send_message(user_id, "Getting info...")
         track = meta.get_track(call_data[1])
 
-        await progress_message.edit_text(f"Fetching lyrics for {track.title} - {track.artist}")
+        await progress_message.edit_text(
+            f"Fetching lyrics for {track.title} - {track.artist}"
+        )
         lyrics = genius.search_song(track.title, track.artist).lyrics
 
         quote_entity = [
@@ -177,21 +181,22 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
     elif call_data[0] == "tracks":
         page: int = 0
         if len(call_data) == 1 or call_data[1] == "retry":
-            progress_message = await client.send_message(user_id, "Loading favorites...")
+            progress_message = await client.send_message(
+                user_id, "Loading favorites..."
+            )
             tracks = data.get_user_data(user_id)["favorite_tracks"]
-            if "" in tracks: tracks.remove("")
+            if "" in tracks:
+                tracks.remove("")
 
             global favorite_results
             favorite_results = []
-            for i in range(len(tracks)):
-                item = await yt.get_info(tracks[i], msg)
-                if item == []:
-                    await msg.edit_text("Could not load the song")
-                    break
-                liked_items.append(
+            for track in tracks:
+                t = meta.get_track(track)
+
+                favorite_results.append(
                     (
-                        f"{i+1} | {item["videoDetails"]["title"]} | {item["videoDetails"]["author"]} | {(int(item["videoDetails"]["lengthSeconds"])//60):02d}:{(int(item["videoDetails"]["lengthSeconds"])%60):02d}",
-                        tracks[i],
+                        f"{t.title} | {t.artist} | {t.show_duration()}",
+                        t.track_id,
                     )
                 )
         else:
@@ -199,33 +204,28 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
 
         keyboard = InlineKeyboardMarkup(
             [[InlineKeyboardButton("< Back", callback_data="collection")]]
-            + list_items(liked_items, page, "tracks")
+            + list_items(favorite_results, page, "tracks")
         )
-        print(liked_items)
-        print(tracks)
         await callback_query.edit_message_text("Favorite songs", reply_markup=keyboard)
-        await msg.delete()
+        await progress_message.delete()
 
 
 # search for music
-async def search(message: Message, text: str = None):
-    if text == None:
-        text = message.text
+async def search(message: Message, query: str = None):
+    if query == None:
+        query = message.text
 
-    msg = await app.send_message(message.from_user.id, "Searching...")
-    global search_text
+    progress_message = await app.send_message(message.from_user.id, "Searching...")
+    global search_query
     global search_results
-    search_text = text
-    search_results = await yt.search(text, msg)
+    search_query = query
+    search_results = meta.search_tracks(query)
 
     keyboard = InlineKeyboardMarkup(list_items(search_results, 0))
-    if type(search_results) == list:
-        await message.reply_text(
-            f"Search results for {search_text}", reply_markup=keyboard
-        )
-    else:
-        await message.reply_text("Error: " + str(search_results), reply_markup=keyboard)
-    await msg.delete()
+    await message.reply_text(
+        f"Search results for {search_query}", reply_markup=keyboard
+    )
+    await progress_message.delete()
 
 
 # handler for /start
@@ -277,15 +277,10 @@ async def help_command(client: Client, message: Message):
 # handler for /search
 @app.on_message(filters.command("search"))
 async def search_command(client: Client, message: Message):
-    if message.command:
-        if len(message.command) > 1:
-            await search(message, message.command[1])
-        else:
-            await message.reply_text("No query")
+    if len(message.command) > 1:
+        await search(message, message.command[1])
     else:
-        await message.reply_text(
-            "Send me a name of a song/album/artist that you are searching for"
-        )
+        await message.reply_text("No query")
 
 
 # handler for /collection
@@ -306,7 +301,9 @@ async def collection_command(client: Client, message: Message):
 @app.on_message(filters.text & ~filters.command(["help", "start"]))
 async def text_message(client: Client, message: Message):
     if message.text == "🔍 Search music":
-        await search_command(client, message)
+        await message.reply_text(
+            "Send me a name of a song/album/artist that you are searching for"
+        )
     elif message.text == "📦 My collection":
         await collection_command(client, message)
     else:

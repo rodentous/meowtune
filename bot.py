@@ -288,9 +288,9 @@ async def search_command(client: Client, message: Message):
 async def collection_command(client: Client, message: Message):
     keyboard = InlineKeyboardMarkup(
         [
-            [InlineKeyboardButton("Favorite tracks", callback_data="tracks.0")],
-            # [InlineKeyboardButton("Favorite albums", callback_data="albums.0")],
-            # [InlineKeyboardButton("Favorite artists", callback_data="artists.0")],
+            [InlineKeyboardButton("Favorite tracks", callback_data="tracks")],
+            # [InlineKeyboardButton("Favorite albums", callback_data="albums")],
+            # [InlineKeyboardButton("Favorite artists", callback_data="artists")],
         ]
     )
 

@@ -9,15 +9,15 @@ ytm = YTMusic("browser.json")
 
 def get_info(videoId: str) -> list:
     try:
-        t = ytm.get_song(videoId)
+        t = ytm.get_song(videoId)["videoDetails"]
         additional_info = ytm.get_watch_playlist(videoId)["tracks"][0]
 
         return [
-            t["videoDetails"]["videoId"],
-            t["videoDetails"]["title"],
-            ", ".join([a.get("name", "") for a in t.get("artists", [])]),
+            t.get("videoId", "unknown_id"),
+            t.get("title", "Unknown"),
+            ", ".join([a.get("name", "Unknown") for a in t.get("artists", [{"name": "Unknown"}])]),
             additional_info["album"]["name"],
-            t["videoDetails"]["lengthSeconds"],
+            t.get("lengthSeconds", 0),
         ]
     except Exception as e:
         print(f"ytm get_song error: {e}")
@@ -29,10 +29,10 @@ def search(query: str) -> list[list]:
         tracks = ytm.search(query, filter="songs", limit=99)
         return [
             [
-                t.get("videoId", ""),
-                t.get("title", ""),
-                ", ".join([a.get("name", "") for a in t.get("artists", [])]),
-                t.get("album", {"name": [""]})["name"],
+                t.get("videoId", "Unknown"),
+                t.get("title", "Unknown"),
+                ", ".join([a.get("name", "Unknown") for a in t.get("artists", [{"name": "Unknown"}])]),
+                t.get("album", {"name": ["Unknown"]})["name"],
                 t.get("duration_seconds", 0),
             ]
             for t in tracks

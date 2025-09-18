@@ -25,13 +25,9 @@ def get_track(track_id: str) -> Track:
 
 
 def search_tracks(query: str) -> list[Track]:
-    tracks = []
-    try:
-        results = yt.search(query)
-        tracks = [Track(t[0], t[1], t[2], t[3], t[4], t[5]) for t in results]
-        return tracks
-    except:
-        return []
+    results = yt.search(query)
+    tracks = [Track(t[0], t[1], t[2], t[3], t[4], t[5]) for t in results]
+    return tracks
 
 
 def download_track(track_id: str) -> str:
@@ -40,4 +36,4 @@ def download_track(track_id: str) -> str:
     if os.path.exists(path):
         return path
 
-    return path
+    return yt.download(track_id)

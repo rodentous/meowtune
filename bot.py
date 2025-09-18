@@ -216,9 +216,11 @@ async def search(message: Message, query: str = None):
         query = message.text
 
     progress_message = await app.send_message(message.from_user.id, "Searching...")
+
     global search_query
-    global search_results
     search_query = query
+
+    global search_results
     search_results = meta.search_tracks(query)
 
     keyboard = InlineKeyboardMarkup(list_items(search_results, 0))

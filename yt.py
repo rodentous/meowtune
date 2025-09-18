@@ -8,27 +8,35 @@ ytm = YTMusic("browser.json")
 
 
 def get_info(videoId: str) -> list[str]:
-    t = ytm.get_song(videoId)
-    return [
-        t["videoId"],
-        t["videoDetails"]["title"],
-        ", ".join([a.get("name", "") for a in t.get("artists", [])]),
-    ]
+    try:
+        t = ytm.get_song(videoId)
+        return [
+            t["videoId"],
+            t["videoDetails"]["title"],
+            ", ".join([a.get("name", "") for a in t.get("artists", [])]),
+        ]
+    except Exception as e:
+        print("ytm get_song error: ", e)
+        return []
 
 
 def search(query: str) -> list[list[str]]:
-    tracks = ytm.search(query, filter="songs", limit=99)
-    return [
-        [
-            t.get("videoId", ""),
-            t.get("title", ""),
-            ", ".join([a.get("name", "") for a in t.get("artists", [])]),
+    try:
+        tracks = ytm.search(query, filter="songs", limit=99)
+        return [
+            [
+                t.get("videoId", ""),
+                t.get("title", ""),
+                ", ".join([a.get("name", "") for a in t.get("artists", [])]),
+            ]
+            for t in tracks
         ]
-        for t in tracks
-    ]
+    except Exception as e:
+        print("ytm search error:", e)
+        return []
 
 
-def download(track: str, path: str) -> bool:
+def download(track: str, path: str) -> str:
     # Build the command
     cmd = [
         "yt-dlp",
@@ -56,7 +64,8 @@ def download(track: str, path: str) -> bool:
             timeout=120,  # 2 minute timeout
             check=True,  # Raise exception on non-zero exit code
         )
-        return True
+        return path
 
-    except:
-        return False
+    except Exception as e:
+        print("yt-dlp error: ", e)
+        return ""

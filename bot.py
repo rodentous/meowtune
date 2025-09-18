@@ -80,11 +80,11 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
     # Searching
     if call_data[0] == "search":
         page: int = 0
-        progress_message = await callback_query.message.reply_text("Searching...")
         global search_query
         global search_results
 
         if call_data[1] == "retry":
+            progress_message = await callback_query.message.reply_text("Searching...")
             search_results = meta.search_tracks(search_query)
         else:
             page = int(call_data[1])
@@ -99,7 +99,8 @@ async def handle_callback(client: Client, callback_query: CallbackQuery):
             f"Search results for {search_query}",
             reply_markup=keyboard,
         )
-        await progress_message.delete()
+        if progress_message:
+            await progress_message.delete()
 
     # Item selected
     elif call_data[0] == "item":

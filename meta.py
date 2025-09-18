@@ -36,4 +36,4 @@ def download_track(track_id: str) -> str:
     if os.path.exists(path):
         return path
 
-    return yt.download(track_id)
+    return yt.download(track_id, path)

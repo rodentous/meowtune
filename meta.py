@@ -21,12 +21,12 @@ class Track:
 
 def get_track(track_id: str) -> Track:
     t = yt.get_info(track_id)
-    return Track(t[0], t[1], t[2], t[3], t[4], t[5])
+    return Track(t[0], t[1], t[2], t[3], t[4])
 
 
 def search_tracks(query: str) -> list[Track]:
     results = yt.search(query)
-    tracks = [Track(t[0], t[1], t[2], t[3], t[4], t[5]) for t in results]
+    tracks = [Track(t[0], t[1], t[2], t[3], t[4]) for t in results]
     return tracks
 
 

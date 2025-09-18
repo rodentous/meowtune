@@ -7,20 +7,24 @@ import subprocess
 ytm = YTMusic("browser.json")
 
 
-def get_info(videoId: str) -> list[str]:
+def get_info(videoId: str) -> list:
     try:
         t = ytm.get_song(videoId)
+        additional_info = ytm.get_watch_playlist(videoId)[0]
+
         return [
             t["videoId"],
             t["videoDetails"]["title"],
             ", ".join([a.get("name", "") for a in t.get("artists", [])]),
+            additional_info["album"]["name"],
+            t["videoDetails"]["lengthSeconds"],
         ]
     except Exception as e:
         print("ytm get_song error: ", e)
         return []
 
 
-def search(query: str) -> list[list[str]]:
+def search(query: str) -> list[list]:
     try:
         tracks = ytm.search(query, filter="songs", limit=99)
         return [
@@ -28,6 +32,8 @@ def search(query: str) -> list[list[str]]:
                 t.get("videoId", ""),
                 t.get("title", ""),
                 ", ".join([a.get("name", "") for a in t.get("artists", [])]),
+                t.get("album", {"name": [""]})["name"],
+                t.get("duration_seconds", 0),
             ]
             for t in tracks
         ]
